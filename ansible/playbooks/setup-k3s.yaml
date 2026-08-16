@@ -1,0 +1,79 @@
+- name: Setup k3s on control plane
+  hosts: controlplane
+  remote_user: root
+  tasks:
+    - name: Remove stale fingerprint
+      delegate_to: localhost
+      register: remove_ssh
+      ansible.builtin.command: "ssh-keygen -R {{ groups['controlplane'][0] }}"
+      failed_when: false
+      changed_when: false
+
+    - name: Add fingerprint to known_hosts
+      delegate_to: localhost
+      ansible.builtin.command: "ssh-keyscan -H {{ groups['controlplane'][0] }} >> ~/.ssh/known_hosts"
+      changed_when: true
+
+    - name: Download k3s script
+      ansible.builtin.get_url:
+        url: https://get.k3s.io
+        dest: "~/install.sh"
+        mode: 755
+
+    - name: Install k3s script
+      ansible.builtin.command: "~/install.sh"
+      args:
+        creates: /usr/local/bin/k3s
+
+    - name: Setup headlamp
+      ansible.builtin.command: "kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/headlamp/main/kubernetes-headlamp.yaml"
+      register: headlamp_apply
+      changed_when: "'configured' in headlamp_apply.stdout or 'created' in headlamp_apply.stdout"
+
+    - name: Create headlamp-admin account
+      ansible.builtin.command: "kubectl -n kube-system create serviceaccount headlamp-admin"
+      register: sa_create
+      failed_when: sa_create.rc != 0 and 'already exists' not in sa_create.stderr
+      changed_when: sa_create.rc == 0
+
+    - name: Give admin rights to headlamp-admin account
+      ansible.builtin.command: "kubectl create clusterrolebinding headlamp-admin --serviceaccount=kube-system:headlamp-admin --clusterrole=cluster-admin"
+      register: crb_create
+      failed_when: crb_create.rc != 0 and 'already exists' not in crb_create.stderr
+      changed_when: crb_create.rc == 0
+
+    - name: Create token
+      register: token
+      ansible.builtin.command: "kubectl create token headlamp-admin -n kube-system"
+      changed_when: false
+
+    - name: Output token
+      ansible.builtin.debug:
+        msg: "{{ token.stdout }}"
+
+    - name: Capture k3s.yaml
+      ansible.builtin.fetch:
+        src: "/etc/rancher/k3s/k3s.yaml"
+        dest: ~/.kube/config
+        flat: true
+
+    - name: Update local kubeconfig
+      delegate_to: localhost
+      ansible.builtin.replace:
+        path: "~/.kube/config"
+        regexp: 'https://127\.0\.0\.1:6443'
+        replace: "https://{{ groups['controlplane'][0] }}:6443"
+# - name: Setup k3s on worker nodes
+#   hosts: workernodes
+#   remote_user: root
+#   tasks:
+#     - name: Download k3s script
+#       ansible.builtin.get_url:
+#         url: https://get.k3s.io
+#         dest: "~/install.sh"
+#         mode: 755
+
+#     - name: Install k3s script
+#       ansible.builtin.command: "~/install.sh"
+#       args:
+#         creates: /usr/local/bin/k3s

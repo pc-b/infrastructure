@@ -1,0 +1,4 @@
+- name: K3s Cluster Setup
+  import_playbook: playbooks/setup-k3s.yaml
+# - name: Import Actions Runner Controller Deployment
+#   import_playbook: 02-arc.yaml
