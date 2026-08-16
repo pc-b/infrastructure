@@ -20,7 +20,7 @@ provider "proxmox" {
 
 
 resource "proxmox_vm_qemu" "k3s-node" {
-  count              = 1
+  count              = 3
   name               = "k3s-node-${count.index + 1}"
   target_node        = var.proxmox_host
   agent              = 1
