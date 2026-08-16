@@ -1,0 +1,44 @@
+- name: Get node token from k3s
+  hosts: controlplane
+  remote_user: root
+  tasks:
+    - name: Get node token
+      ansible.builtin.slurp:
+        src: /var/lib/rancher/k3s/server/node-token
+      register: k3s_node_token
+
+- name: Setup k3s on worker nodes
+  hosts: workernodes
+  remote_user: root
+  tasks:
+    - name: Remove stale fingerprint
+      delegate_to: localhost
+      register: remove_ssh
+      ansible.builtin.command: "ssh-keygen -R {{ inventory_hostname }}"
+      failed_when: false
+      changed_when: false
+
+    - name: Add fingerprint to known_hosts
+      delegate_to: localhost
+      ansible.builtin.shell: "ssh-keyscan -H {{ inventory_hostname }} >> ~/.ssh/known_hosts"
+      changed_when: true
+
+    - name: Debug k3s connection variables
+      ansible.builtin.debug:
+        msg:
+          - "K3S_URL: https://{{ groups['controlplane'][0] }}:6443"
+          - "K3S_TOKEN: {{ hostvars[groups['controlplane'][0]]['k3s_node_token']['content'] | b64decode | trim }}"
+
+    - name: Download k3s script
+      ansible.builtin.get_url:
+        url: https://get.k3s.io
+        dest: "~/install.sh"
+        mode: 755
+
+    - name: Install k3s script
+      ansible.builtin.command: "~/install.sh"
+      environment:
+        K3S_URL: "https://{{ groups['controlplane'][0] }}:6443"
+        K3S_TOKEN: "{{ hostvars[groups['controlplane'][0]]['k3s_node_token']['content'] | b64decode | trim }}"
+      args:
+        creates: /usr/local/bin/k3s

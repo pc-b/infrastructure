@@ -1,0 +1,29 @@
+- name: Setup headlamp
+  hosts: controlplane
+  remote_user: root
+  tasks:
+    - name: Setup headlamp
+      ansible.builtin.command: "kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/headlamp/main/kubernetes-headlamp.yaml"
+      register: headlamp_apply
+      changed_when: "'configured' in headlamp_apply.stdout or 'created' in headlamp_apply.stdout"
+
+    - name: Create headlamp-admin account
+      ansible.builtin.command: "kubectl -n kube-system create serviceaccount headlamp-admin"
+      register: sa_create
+      failed_when: sa_create.rc != 0 and 'already exists' not in sa_create.stderr
+      changed_when: sa_create.rc == 0
+
+    - name: Give admin rights to headlamp-admin account
+      ansible.builtin.command: "kubectl create clusterrolebinding headlamp-admin --serviceaccount=kube-system:headlamp-admin --clusterrole=cluster-admin"
+      register: crb_create
+      failed_when: crb_create.rc != 0 and 'already exists' not in crb_create.stderr
+      changed_when: crb_create.rc == 0
+
+    - name: Create token
+      register: token
+      ansible.builtin.command: "kubectl create token headlamp-admin -n kube-system"
+      changed_when: false
+
+    - name: Output token
+      ansible.builtin.debug:
+        msg: "{{ token.stdout }}"

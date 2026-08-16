@@ -1,0 +1,34 @@
+- name: Setup k3s on control plane
+  hosts: controlplane
+  remote_user: root
+  tasks:
+    - name: Ensure fresh SSH host key in known_hosts
+      delegate_to: localhost
+      ansible.builtin.known_hosts:
+        name: "{{ groups['controlplane'][0] }}"
+        key: "{{ lookup('pipe', 'ssh-keyscan -H ' ~ groups['controlplane'][0]) }}"
+        state: present
+
+    - name: Download k3s script
+      ansible.builtin.get_url:
+        url: https://get.k3s.io
+        dest: "~/install.sh"
+        mode: 755
+
+    - name: Install k3s script
+      ansible.builtin.command: "~/install.sh"
+      args:
+        creates: /usr/local/bin/k3s
+
+    - name: Capture k3s.yaml
+      ansible.builtin.fetch:
+        src: "/etc/rancher/k3s/k3s.yaml"
+        dest: ~/.kube/config
+        flat: true
+
+    - name: Update local kubeconfig
+      delegate_to: localhost
+      ansible.builtin.replace:
+        path: "~/.kube/config"
+        regexp: 'https://127\.0\.0\.1:6443'
+        replace: "https://{{ groups['controlplane'][0] }}:6443"
