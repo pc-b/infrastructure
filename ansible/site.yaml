@@ -1,11 +1,11 @@
 - name: K3s control plane setup
   import_playbook: playbooks/setup-k3s-control-plane.yaml
 
-- name: Setup headlamp
-  import_playbook: playbooks/install-headlamp.yaml
-
 # for some reason it seems to fail wehn i run it this way but i can run it solo
 - name: K3s control plane setup
   import_playbook: playbooks/setup-k3s-worker-nodes.yaml
+
+- name: Setup headlamp
+  import_playbook: playbooks/install-headlamp.yaml
 # - name: Install ARC
 #   import_playbook: playbooks/install-arc.yaml
