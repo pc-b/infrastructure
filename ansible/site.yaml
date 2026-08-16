@@ -8,6 +8,6 @@
   import_playbook: playbooks/install-headlamp.yaml
 
 - name: Setup headlamp
-  import_playbook: playbools/install-tailscale.yaml
+  import_playbook: playbooks/install-tailscale.yaml
 # - name: Install ARC
 #   import_playbook: playbooks/install-arc.yaml
