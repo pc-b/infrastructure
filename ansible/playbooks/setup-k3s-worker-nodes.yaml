@@ -1,6 +1,7 @@
 - name: Get node token from k3s
   hosts: controlplane
   remote_user: root
+  gather_facts: false
   tasks:
     - name: Get node token
       ansible.builtin.slurp:
@@ -10,7 +11,16 @@
 - name: Setup k3s on worker nodes
   hosts: workernodes
   remote_user: root
+  gather_facts: false
   tasks:
+    - name: Wait for worker nodes to become reachable via SSH
+      ansible.builtin.wait_for_connection:
+        delay: 5
+        timeout: 300
+
+    - name: Gather facts
+      ansible.builtin.setup:
+
     - name: Remove stale fingerprint
       delegate_to: localhost
       register: remove_ssh

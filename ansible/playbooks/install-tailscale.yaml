@@ -1,0 +1,30 @@
+- name: Install tailscale on control plane
+  hosts: controlplane
+  remote_user: root
+  vars:
+    tailscale_key: "{{ lookup('ansible.builtin.env', 'TAILSCALE_AUTH_KEY') }}"
+  tasks:
+    - name: Download tailscale installer
+      ansible.builtin.get_url:
+        url: https://tailscale.com/install.sh
+        dest: "~/tailscale_install.sh"
+        mode: 755
+
+    - name: Install tailscale
+      ansible.builtin.command: "~/tailscale_install.sh"
+      args:
+        creates: /usr/bin/tailscale
+
+    - name: Run tailscale up
+      register: tailscale_out
+      ansible.builtin.command: "tailscale up --auth-key={{ tailscale_key }}"
+      changed_when: false
+
+    - name: Get Tailscale IP
+      ansible.builtin.command: "tailscale ip -4"
+      register: tailscale_ip
+      changed_when: false
+
+    - name: Print tailscale login URL
+      ansible.builtin.debug:
+        msg: "Control plane is connected to Tailscale at IP: {{ tailscale_ip.stdout }}"

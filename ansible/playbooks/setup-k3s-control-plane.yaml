@@ -1,7 +1,16 @@
 - name: Setup k3s on control plane
   hosts: controlplane
   remote_user: root
+  gather_facts: false
   tasks:
+    - name: Wait for control plane to become reachable via SSH
+      ansible.builtin.wait_for_connection:
+        delay: 5
+        timeout: 300
+
+    - name: Gather facts
+      ansible.builtin.setup:
+
     - name: Ensure fresh SSH host key in known_hosts
       delegate_to: localhost
       ansible.builtin.known_hosts:
@@ -19,6 +28,17 @@
       ansible.builtin.command: "~/install.sh"
       args:
         creates: /usr/local/bin/k3s
+
+    - name: Wait for k3s API server port 6443 to be ready
+      ansible.builtin.wait_for:
+        port: 6443
+        delay: 3
+        timeout: 60
+
+    - name: Wait for node-token to be generated
+      ansible.builtin.wait_for:
+        path: /var/lib/rancher/k3s/server/node-token
+        timeout: 60
 
     - name: Capture k3s.yaml
       ansible.builtin.fetch:
