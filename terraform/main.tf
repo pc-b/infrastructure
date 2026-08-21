@@ -45,8 +45,8 @@ resource "proxmox_vm_qemu" "k3s-node" {
   ciuser     = "root"
   cipassword = "password"
   sshkeys    = <<EOF
-ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDe5dCm4KjWTm6Dbjezf1XxbvxStk/zxDJoHNqJ2Lv9U margo@DESKTOP-K4INHQG
-ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILqCke7fIY95QRmvTpn5tOMMfeHkH6eBA7uG5USzuozA margo@DESKTOP-K4INHQG
+${var.ssh_public_key_1}
+${var.ssh_public_key_2}
 EOF
 
   # Most cloud-init images require a serial device for their display
